@@ -135,6 +135,12 @@ def should_skip(input_url, output_filename, size, output_mode):
     if os.path.exists(output_filename):
         st = os.stat(output_filename)
 
+        if stat.S_ISDIR(output_mode) and stat.S_ISDIR(st.st_mode):
+            g_skip_count += 1
+            return True
+        # TODO: This probably does not handle the case of directories
+        # turning into files
+
         # Compare size and mode to source
         size_ok = size == st.st_size
         mode_ok = output_mode == stat.S_IMODE(st.st_mode)
@@ -160,7 +166,11 @@ def should_skip(input_url, output_filename, size, output_mode):
         else:
             logging.warning("Size/mode mismatch!  Regenerating file %s (size %d) -> %s (size %d)" % \
                     (input_url, size, output_filename, st.st_size))
-            os.unlink(output_filename)
+            try:
+                os.unlink(output_filename)
+            except as e:
+                logging.error("Unable to unlink: %s" % str(e))
+                return True
     try:
         os.makedirs(os.path.split(output_filename)[0])
     except OSError as oe:
